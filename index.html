@@ -1,80 +1,856 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <title>Website Saya</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-
-    .container {
-      display: flex;
-    }
-
-    .sidebar {
-      width: 220px;
-      background-color: #f2f2f2;
-      padding: 20px;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-    }
-
-    .sidebar ul {
-      list-style-type: none;
-      padding: 0;
-    }
-
-    .sidebar li {
-      margin: 15px 0;
-    }
-
-    .sidebar li img {
-      vertical-align: middle;
-      margin-right: 8px;
-      width: 20px;
-      height: 20px;
-    }
-
-    .sidebar li a {
-      text-decoration: none;
-      color: #333;
-      font-size: 16px;
-    }
-
-    .sidebar li a:hover {
-      color: #007BFF;
-    }
-
-    .content {
-      flex: 1;
-      padding: 30px;
-    }
-
-    .content h1 {
-      margin-top: 0;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Multiguna</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        /* Custom styles for login page background gradient */
+        .login-bg-gradient {
+            background-image: linear-gradient(to right, #4CAF50, #2196F3); /* Green to Blue gradient */
+        }
+        /* Hide scrollbar for aesthetic purposes */
+        body::-webkit-scrollbar {
+            display: none;
+        }
+        body {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
 </head>
-<body>
+<body class="bg-gray-900 text-white">
 
-  <div class="container">
-    <div class="sidebar">
-      <ul>
-        <li><img src="https://icons.iconarchive.com/icons/flaticonmaker/flat-style/256/house-icon.png"> <a href="index.html">Beranda</a></li>
-        <li><img src="https://icons.iconarchive.com/icons/aha-soft/people/256/user-info-icon.png"> <a href="tentang.html">Tentang</a></li>
-        <li><img src="https://icons.iconarchive.com/icons/custom-icon-design/flatastic-7/256/Family-icon.png"> <a href="keluarga.html">Keluarga</a></li>
-        <li><img src="https://icons.iconarchive.com/icons/icons-land/flat-emoticons/256/Study-icon.png"> <a href="studi.html">Studi</a></li>
-        <li><img src="https://icons.iconarchive.com/icons/dtafalonso/ios7-desktop/256/Folder-Contacts-icon.png"> <a href="kontak.html">Kontak</a></li>
-        <li><img src="https://icons.iconarchive.com/icons/google/noto-emoji-objects/256/62976-link-icon.png"> <a href="https://rizkybagus381.github.io/FORTOFOLIO-RISKI-DIGITAL-CV/">Link</a></li>
-      </ul>
+    <!-- Kontainer Aplikasi Utama -->
+    <div id="app-container" class="min-h-screen flex items-center justify-center p-4 login-bg-gradient">
+        <!-- Konten akan dimuat di sini oleh JavaScript -->
     </div>
 
-    <div class="content">
-      <h1>Selamat Datang</h1>
-      <p>Halaman ini adalah halaman beranda saya.</p>
-    </div>
-  </div>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // Variabel global yang disediakan oleh Canvas
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Kredensial hardcode untuk demo
+        const CORRECT_ID = '123';
+        const CORRECT_PIN = '123';
+
+        let db;
+        let auth;
+        let userId = null;
+        let loggedIn = false;
+
+        // State untuk UI
+        let tasks = [];
+        let financeEntries = [];
+        let points = 0;
+        let authMessage = '';
+        let rewardMessage = '';
+        let aiTaskSuggestions = [];
+        let isGeneratingTasks = false;
+        let aiFinanceAnalysis = '';
+        let isAnalyzingFinance = false;
+        let showFinanceAnalysisModal = false;
+        let totalBalance = 0; // Global variable for total balance
+
+        // Fungsi untuk merender halaman login
+        function renderLoginPage() {
+            const appContainer = document.getElementById('app-container');
+            appContainer.className = 'min-h-screen flex items-center justify-center p-4 login-bg-gradient'; // Set background gradient
+            appContainer.innerHTML = `
+                <div class="w-full max-w-md bg-white p-0 rounded-2xl shadow-2xl overflow-hidden">
+                    <!-- Header Login -->
+                    <div class="bg-gray-800 p-8 text-center text-white">
+                        <h1 class="text-4xl font-extrabold mb-2">Login</h1>
+                        <p class="text-gray-400">Selamat datang kembali!</p>
+                    </div>
+
+                    <!-- Form Login -->
+                    <div class="p-8">
+                        <div class="mb-6 relative border-b-2 border-gray-300 focus-within:border-green-500">
+                            <i data-lucide="user" class="absolute left-0 top-1/2 -translate-y-1/2 text-gray-500" style="width:20px; height:20px;"></i>
+                            <input
+                                type="text"
+                                id="login-id"
+                                class="w-full py-2 pl-8 pr-2 bg-transparent text-gray-800 placeholder-gray-500 focus:outline-none text-lg"
+                                placeholder="ID Pengguna (123)"
+                            />
+                        </div>
+                        <div class="mb-6 relative border-b-2 border-gray-300 focus-within:border-green-500">
+                            <i data-lucide="lock" class="absolute left-0 top-1/2 -translate-y-1/2 text-gray-500" style="width:20px; height:20px;"></i>
+                            <input
+                                type="password"
+                                id="login-pin"
+                                class="w-full py-2 pl-8 pr-2 bg-transparent text-gray-800 placeholder-gray-500 focus:outline-none text-lg"
+                                placeholder="PIN (123)"
+                            />
+                        </div>
+                        <p id="auth-message" class="text-red-500 text-sm mb-4">${authMessage}</p>
+                        <button
+                            id="login-button"
+                            class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-full transition duration-300 ease-in-out transform hover:scale-105 shadow-lg text-xl"
+                        >
+                            LOGIN
+                        </button>
+                        <div class="flex justify-between items-center mt-6 text-sm">
+                            <a href="#" class="text-gray-600 hover:text-green-500 hover:underline">Lupa Password?</a>
+                            <a href="#" class="text-gray-600 hover:text-green-500 hover:underline">Buat Akun</a>
+                        </div>
+                        <p class="text-xs text-center text-gray-500 mt-8">
+                            Gunakan ID: <span class="font-bold text-green-600">123</span> dan PIN: <span class="font-bold text-green-600">123</span>
+                        </p>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons(); // Render Lucide icons
+
+            // Tambahkan event listeners setelah elemen dirender
+            document.getElementById('login-button').addEventListener('click', handleLogin);
+            
+            const loginIdInput = document.getElementById('login-id');
+            const loginPinInput = document.getElementById('login-pin');
+
+            loginIdInput.addEventListener('input', () => {
+                authMessage = '';
+                document.getElementById('auth-message').textContent = authMessage;
+            });
+            loginPinInput.addEventListener('input', () => {
+                authMessage = '';
+                document.getElementById('auth-message').textContent = authMessage;
+            });
+            loginIdInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleLogin();
+            });
+            loginPinInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleLogin();
+            });
+        }
+
+        // Fungsi untuk merender aplikasi utama
+        function renderApp() {
+            const appContainer = document.getElementById('app-container');
+            appContainer.className = 'min-h-screen bg-gray-900 font-inter p-4 sm:p-8 text-white'; // Remove login background
+            appContainer.innerHTML = `
+                <div class="max-w-4xl mx-auto bg-gray-800 shadow-2xl rounded-2xl p-6 sm:p-10 border border-green-500">
+                    <div class="flex justify-between items-center mb-8">
+                        <h1 class="text-4xl sm:text-5xl font-extrabold text-white">
+                            Aplikasi Multiguna Anda
+                        </h1>
+                        <button
+                            id="logout-button"
+                            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center"
+                        >
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                            Logout
+                        </button>
+                    </div>
+
+                    ${userId ? `<div class="text-center text-sm text-gray-400 mb-6">
+                        ID Sesi Anda: <span class="font-mono bg-gray-700 px-2 py-1 rounded-md">${userId}</span>
+                    </div>` : ''}
+
+                    <!-- Bagian Gamifikasi -->
+                    <div class="bg-gray-700 p-6 rounded-xl shadow-md mb-8 border border-green-500">
+                        <h2 class="text-2xl font-bold text-green-400 mb-4 flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.324 1.139l1.519 4.674c.3.921-.755 1.688-1.539 1.139l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.784.549-1.838-.218-1.539-1.139l1.519-4.674a1 1 0 00-.324-1.139L2.05 9.101c-.783-.57-.381-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z"></path></svg>
+                            Poin Anda: <span id="points-display" class="ml-2 text-3xl font-extrabold">${points}</span>
+                        </h2>
+                        <button
+                            id="redeem-reward-button"
+                            class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                        >
+                            Tebus Hadiah (50 Poin)
+                        </button>
+                        <p id="reward-message" class="mt-4 text-center text-green-400 font-semibold animate-pulse">${rewardMessage}</p>
+                    </div>
+
+                    <!-- Bagian Pencatat Tugas -->
+                    <div class="bg-gray-700 p-6 rounded-xl shadow-md mb-8 border border-green-500">
+                        <h2 class="text-2xl font-bold text-green-400 mb-4 flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                            Pencatat Tugas
+                        </h2>
+                        <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                            <input
+                                type="text"
+                                id="new-task-input"
+                                class="flex-grow p-3 border border-gray-600 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400"
+                                placeholder="Tambahkan tugas baru..."
+                            />
+                            <button
+                                id="add-task-button"
+                                class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md mr-2"
+                            >
+                                Tambah Tugas
+                            </button>
+                            <button
+                                id="generate-tasks-button"
+                                class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center"
+                                ${isGeneratingTasks ? 'disabled' : ''}
+                            >
+                                ${isGeneratingTasks ? `
+                                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                ` : `
+                                    <i data-lucide="lightbulb" class="w-5 h-5 mr-2" style="width:20px; height:20px;"></i>
+                                    ✨ Saran AI
+                                `}
+                            </button>
+                        </div>
+                        <div id="ai-task-suggestions-container" class="mt-4">
+                            ${aiTaskSuggestions.length > 0 ? `
+                                <div class="p-4 bg-gray-800 rounded-lg border border-purple-500">
+                                    <h3 class="text-lg font-semibold text-purple-400 mb-2">Saran Tugas dari AI:</h3>
+                                    <ul class="list-disc list-inside text-gray-300" id="ai-suggestions-list">
+                                        ${aiTaskSuggestions.map((suggestion, index) => `
+                                            <li class="mb-1 flex justify-between items-center">
+                                                ${suggestion}
+                                                <button data-suggestion="${suggestion}" class="add-suggested-task-button ml-2 bg-green-700 hover:bg-green-600 text-white text-xs px-2 py-1 rounded-md">
+                                                    Tambah
+                                                </button>
+                                            </li>
+                                        `).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                        </div>
+                        <ul id="tasks-list" class="space-y-3">
+                            ${tasks.length === 0 ? `<p class="text-gray-400 text-center">Belum ada tugas. Tambahkan satu!</p>` : ''}
+                        </ul>
+                    </div>
+
+                    <!-- Bagian Pengelolaan Keuangan -->
+                    <div class="bg-gray-700 p-6 rounded-xl shadow-md border border-green-500">
+                        <h2 class="text-2xl font-bold text-green-400 mb-4 flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            Pengelolaan Keuangan
+                        </h2>
+                        <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                            <input
+                                type="number"
+                                id="new-finance-amount"
+                                class="w-24 p-3 border border-gray-600 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400"
+                                placeholder="Jumlah"
+                            />
+                            <input
+                                type="text"
+                                id="new-finance-description"
+                                class="flex-grow p-3 border border-gray-600 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400"
+                                placeholder="Deskripsi (misal: Gaji, Belanja)"
+                            />
+                            <select
+                                id="new-finance-type"
+                                class="p-3 border border-gray-600 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                            >
+                                <option value="income">Pemasukan</option>
+                                <option value="expense">Pengeluaran</option>
+                            </select>
+                            <button
+                                id="add-finance-button"
+                                class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md mr-2"
+                            >
+                                Tambah Entri
+                            </button>
+                            <button
+                                id="analyze-finance-button"
+                                class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center"
+                                ${isAnalyzingFinance ? 'disabled' : ''}
+                            >
+                                ${isAnalyzingFinance ? `
+                                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                ` : `
+                                    <i data-lucide="trending-up" class="w-5 h-5 mr-2" style="width:20px; height:20px;"></i>
+                                    ✨ Analisis AI
+                                `}
+                            </button>
+                        </div>
+                        <div class="text-xl font-bold text-white mb-4">
+                            Saldo Saat Ini: <span id="total-balance" class="${totalBalance >= 0 ? 'text-green-400' : 'text-red-400'}">Rp ${totalBalance.toLocaleString('id-ID')}</span>
+                        </div>
+                        <ul id="finance-list" class="space-y-3">
+                            ${financeEntries.length === 0 ? `<p class="text-gray-400 text-center">Belum ada entri keuangan. Tambahkan satu!</p>` : ''}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Modal Analisis Keuangan AI -->
+                <div id="finance-analysis-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 ${showFinanceAnalysisModal ? '' : 'hidden'}">
+                    <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-lg w-full border border-green-500 relative">
+                        <h3 class="text-2xl font-bold text-green-400 mb-4">Analisis Keuangan AI</h3>
+                        <p id="ai-finance-analysis-content" class="text-gray-300 whitespace-pre-wrap">${aiFinanceAnalysis}</p>
+                        <button
+                            id="close-finance-analysis-modal"
+                            class="mt-6 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons(); // Render Lucide icons
+
+            // Tambahkan event listeners setelah elemen dirender
+            document.getElementById('logout-button').addEventListener('click', handleLogout);
+            document.getElementById('redeem-reward-button').addEventListener('click', redeemReward);
+            document.getElementById('add-task-button').addEventListener('click', addTask);
+            document.getElementById('new-task-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addTask();
+            });
+            document.getElementById('generate-tasks-button').addEventListener('click', generateTaskSuggestions);
+            document.getElementById('add-finance-button').addEventListener('click', addFinanceEntry);
+            document.getElementById('new-finance-amount').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addFinanceEntry();
+            });
+            document.getElementById('new-finance-description').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addFinanceEntry();
+            });
+            document.getElementById('analyze-finance-button').addEventListener('click', analyzeFinanceData);
+            document.getElementById('close-finance-analysis-modal').addEventListener('click', () => {
+                showFinanceAnalysisModal = false;
+                renderApp(); // Render ulang untuk menyembunyikan modal
+            });
+
+            // Render daftar tugas dan keuangan secara terpisah untuk pembaruan yang lebih efisien
+            renderTasksList();
+            renderFinanceList();
+        }
+
+        // Fungsi untuk merender daftar tugas
+        function renderTasksList() {
+            const tasksListElement = document.getElementById('tasks-list');
+            if (!tasksListElement) return; // Pastikan elemen ada
+
+            if (tasks.length === 0) {
+                tasksListElement.innerHTML = `<p class="text-gray-400 text-center">Belum ada tugas. Tambahkan satu!</p>`;
+            } else {
+                tasksListElement.innerHTML = tasks.map(task => `
+                    <li
+                        class="flex items-center justify-between p-4 rounded-lg shadow-sm transition duration-200 ease-in-out ${task.completed ? 'bg-green-800 line-through text-gray-400' : 'bg-gray-800 hover:bg-gray-700'}"
+                    >
+                        <span class="flex-grow cursor-pointer" data-task-id="${task.id}" data-task-completed="${task.completed}">
+                            ${task.text}
+                        </span>
+                        <button data-task-id="${task.id}" class="delete-task-button ml-4 text-red-400 hover:text-red-500 p-2 rounded-full hover:bg-gray-600 transition duration-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </li>
+                `).join('');
+
+                // Tambahkan event listeners untuk toggle dan delete
+                tasksListElement.querySelectorAll('span[data-task-id]').forEach(span => {
+                    span.addEventListener('click', (e) => {
+                        const taskId = e.target.dataset.taskId;
+                        const currentStatus = e.target.dataset.taskCompleted === 'true';
+                        toggleTaskComplete(taskId, currentStatus);
+                    });
+                });
+                tasksListElement.querySelectorAll('.delete-task-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const taskId = e.currentTarget.dataset.taskId;
+                        deleteTask(taskId);
+                    });
+                });
+            }
+        }
+
+        // Fungsi untuk merender daftar keuangan
+        function renderFinanceList() {
+            const financeListElement = document.getElementById('finance-list');
+            const totalBalanceElement = document.getElementById('total-balance');
+            if (!financeListElement || !totalBalanceElement) return; // Pastikan elemen ada
+
+            // Update global totalBalance
+            totalBalance = financeEntries.reduce((acc, entry) => {
+                return entry.type === 'income' ? acc + entry.amount : acc - entry.amount;
+            }, 0);
+
+            totalBalanceElement.textContent = `Rp ${totalBalance.toLocaleString('id-ID')}`;
+            totalBalanceElement.className = totalBalance >= 0 ? 'text-green-400' : 'text-red-400';
+
+            if (financeEntries.length === 0) {
+                financeListElement.innerHTML = `<p class="text-gray-400 text-center">Belum ada entri keuangan. Tambahkan satu!</p>`;
+            } else {
+                financeListElement.innerHTML = financeEntries.map(entry => `
+                    <li
+                        class="flex items-center justify-between p-4 rounded-lg shadow-sm transition duration-200 ease-in-out ${entry.type === 'income' ? 'bg-green-800 hover:bg-green-700' : 'bg-red-800 hover:bg-red-700'}"
+                    >
+                        <div>
+                            <span class="font-semibold">${entry.description}</span>
+                            <span class="ml-2 font-bold ${entry.type === 'income' ? 'text-green-400' : 'text-red-400'}">
+                                ${entry.type === 'income' ? '+' : '-'} Rp ${entry.amount.toLocaleString('id-ID')}
+                            </span>
+                        </div>
+                        <button data-entry-id="${entry.id}" class="delete-finance-button ml-4 text-red-400 hover:text-red-500 p-2 rounded-full hover:bg-gray-600 transition duration-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </li>
+                `).join('');
+
+                // Tambahkan event listeners untuk delete
+                financeListElement.querySelectorAll('.delete-finance-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const entryId = e.currentTarget.dataset.entryId;
+                        deleteFinanceEntry(entryId);
+                    });
+                });
+            }
+        }
+
+
+        // --- Fungsi Logika Aplikasi ---
+
+        async function handleLogin() {
+            const inputId = document.getElementById('login-id').value;
+            const inputPin = document.getElementById('login-pin').value;
+
+            if (inputId === CORRECT_ID && inputPin === CORRECT_PIN) {
+                loggedIn = true;
+                authMessage = '';
+                renderApp(); // Render aplikasi utama setelah login
+                // Setup Firestore listeners only after successful login
+                setupFirestoreListeners();
+            } else {
+                authMessage = "ID Pengguna atau PIN salah.";
+                document.getElementById('auth-message').textContent = authMessage;
+                // Clear message after a few seconds
+                setTimeout(() => {
+                    authMessage = '';
+                    if (document.getElementById('auth-message')) {
+                        document.getElementById('auth-message').textContent = authMessage;
+                    }
+                }, 3000);
+            }
+        }
+
+        async function handleLogout() {
+            if (auth) {
+                try {
+                    await signOut(auth);
+                } catch (error) {
+                    console.error("Error signing out Firebase anonymous user:", error);
+                }
+            }
+            loggedIn = false;
+            userId = null; // Reset userId
+            tasks = [];
+            financeEntries = [];
+            points = 0;
+            authMessage = '';
+            rewardMessage = '';
+            aiTaskSuggestions = [];
+            isGeneratingTasks = false;
+            aiFinanceAnalysis = '';
+            isAnalyzingFinance = false;
+            showFinanceAnalysisModal = false;
+            renderLoginPage(); // Kembali ke halaman login
+        }
+
+        async function addTask() {
+            const newTaskInput = document.getElementById('new-task-input');
+            const newTaskText = newTaskInput.value.trim();
+            if (!db || !userId || !newTaskText) {
+                authMessage = "Tugas tidak boleh kosong.";
+                renderApp(); // Re-render to show message
+                setTimeout(() => { authMessage = ''; renderApp(); }, 3000);
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/users/${userId}/tasks`), {
+                    text: newTaskText,
+                    completed: false,
+                    createdAt: Date.now()
+                });
+                newTaskInput.value = '';
+            } catch (e) {
+                console.error("Gagal menambahkan tugas:", e);
+                authMessage = "Gagal menambahkan tugas. Periksa izin Firestore.";
+                renderApp();
+                setTimeout(() => { authMessage = ''; renderApp(); }, 3000);
+            }
+        }
+
+        async function toggleTaskComplete(taskId, currentStatus) {
+            if (!db || !userId) return;
+            const taskDocRef = doc(db, `artifacts/${appId}/users/${userId}/tasks`, taskId);
+            try {
+                await updateDoc(taskDocRef, {
+                    completed: !currentStatus
+                });
+                if (!currentStatus) {
+                    await updatePoints(10); // Beri 10 poin
+                }
+            } catch (e) {
+                console.error("Gagal memperbarui status tugas:", e);
+                authMessage = "Gagal memperbarui tugas. Periksa izin Firestore.";
+                renderApp();
+                setTimeout(() => { authMessage = ''; renderApp(); }, 3000);
+            }
+        }
+
+        async function deleteTask(taskId) {
+            if (!db || !userId) return;
+            try {
+                await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/tasks`, taskId));
+            } catch (e) {
+                console.error("Gagal menghapus tugas:", e);
+                authMessage = "Gagal menghapus tugas. Periksa izin Firestore.";
+                renderApp();
+                setTimeout(() => { authMessage = ''; renderApp(); }, 3000);
+            }
+        }
+
+        async function addFinanceEntry() {
+            const newFinanceAmountInput = document.getElementById('new-finance-amount');
+            const newFinanceDescriptionInput = document.getElementById('new-finance-description');
+            const newFinanceTypeSelect = document.getElementById('new-finance-type');
+
+            const amount = parseFloat(newFinanceAmountInput.value);
+            const description = newFinanceDescriptionInput.value.trim();
+            const type = newFinanceTypeSelect.value;
+
+            if (!db || !userId || isNaN(amount) || amount <= 0 || !description) {
+                authMessage = "Jumlah harus angka positif dan deskripsi tidak boleh kosong.";
+                renderApp();
+                setTimeout(() => { authMessage = ''; renderApp(); }, 3000);
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/users/${userId}/finances`), {
+                    type: type,
+                    amount: amount,
+                    description: description,
+                    createdAt: Date.now()
+                });
+                newFinanceAmountInput.value = '';
+                newFinanceDescriptionInput.value = '';
+                await updatePoints(5); // Beri 5 poin
+            } catch (e) {
+                console.error("Gagal menambahkan entri keuangan:", e);
+                authMessage = "Gagal menambahkan entri keuangan. Periksa izin Firestore.";
+                renderApp();
+                setTimeout(() => { authMessage = ''; renderApp(); }, 3000);
+            }
+        }
+
+        async function deleteFinanceEntry(entryId) {
+            if (!db || !userId) return;
+            try {
+                await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/finances`, entryId));
+            } catch (e) {
+                console.error("Gagal menghapus entri keuangan:", e);
+                authMessage = "Gagal menghapus entri keuangan. Periksa izin Firestore.";
+                renderApp();
+                setTimeout(() => { authMessage = ''; renderApp(); }, 3000);
+            }
+        }
+
+        async function updatePoints(amount) {
+            if (!db || !userId) return;
+            const userProfileDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile/data`);
+            try {
+                const docSnap = await getDoc(userProfileDocRef);
+                const currentPoints = docSnap.exists() ? docSnap.data().points : 0;
+                await setDoc(userProfileDocRef, { points: currentPoints + amount });
+                points = currentPoints + amount; // Update local state
+                if (document.getElementById('points-display')) {
+                    document.getElementById('points-display').textContent = points;
+                }
+            } catch (e) {
+                console.error("Gagal memperbarui poin:", e);
+                authMessage = "Gagal memperbarui poin. Periksa izin Firestore.";
+                renderApp();
+                setTimeout(() => { authMessage = ''; renderApp(); }, 3000);
+            }
+        }
+
+        async function redeemReward() {
+            if (!db || !userId) return;
+            const rewardCost = 50;
+            if (points >= rewardCost) {
+                try {
+                    await updatePoints(-rewardCost);
+                    rewardMessage = 'Selamat! Anda telah menebus hadiah virtual!';
+                    document.getElementById('reward-message').textContent = rewardMessage;
+                    setTimeout(() => {
+                        rewardMessage = '';
+                        if (document.getElementById('reward-message')) {
+                            document.getElementById('reward-message').textContent = rewardMessage;
+                        }
+                    }, 3000);
+                } catch (e) {
+                    console.error("Gagal menebus hadiah:", e);
+                    authMessage = "Gagal menebus hadiah. Periksa izin Firestore.";
+                    renderApp();
+                    setTimeout(() => { authMessage = ''; renderApp(); }, 3000);
+                }
+            } else {
+                rewardMessage = `Poin tidak cukup. Anda butuh ${rewardCost - points} poin lagi.`;
+                document.getElementById('reward-message').textContent = rewardMessage;
+                setTimeout(() => {
+                    rewardMessage = '';
+                    if (document.getElementById('reward-message')) {
+                        document.getElementById('reward-message').textContent = rewardMessage;
+                    }
+                }, 3000);
+            }
+        }
+
+        async function generateTaskSuggestions() {
+            const newTaskInput = document.getElementById('new-task-input');
+            const mainTask = newTaskInput.value.trim();
+            if (!mainTask) {
+                authMessage = "Masukkan tugas utama untuk mendapatkan saran.";
+                renderApp();
+                setTimeout(() => { authMessage = ''; renderApp(); }, 3000);
+                return;
+            }
+
+            isGeneratingTasks = true;
+            aiTaskSuggestions = [];
+            renderApp(); // Render ulang untuk menampilkan loading state
+
+            const prompt = `Break down the task "${mainTask}" into 3-5 actionable sub-tasks. Provide them as a JSON array of strings, like ["Sub-task 1", "Sub-task 2", "Sub-task 3"].`;
+            const apiKey = ""; // API key akan disediakan oleh Canvas saat runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "ARRAY",
+                            items: { "type": "STRING" }
+                        }
+                    }
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const jsonString = result.candidates[0].content.parts[0].text;
+                    try {
+                        const parsedSuggestions = JSON.parse(jsonString);
+                        if (Array.isArray(parsedSuggestions)) {
+                            aiTaskSuggestions = parsedSuggestions;
+                        } else {
+                            console.error("Respons AI bukan array yang diharapkan:", parsedSuggestions);
+                            authMessage = "Gagal mendapatkan saran tugas. Format respons tidak valid.";
+                        }
+                    } catch (parseError) {
+                        console.error("Gagal mem-parsing JSON dari AI:", parseError);
+                        authMessage = "Gagal mem-parsing saran tugas. Coba lagi.";
+                    }
+                } else {
+                    authMessage = "Tidak dapat menghasilkan saran tugas. Coba lagi.";
+                }
+            } catch (error) {
+                console.error("Error memanggil Gemini API untuk saran tugas:", error);
+                authMessage = "Terjadi kesalahan saat menghubungi AI untuk saran tugas.";
+            } finally {
+                isGeneratingTasks = false;
+                renderApp(); // Render ulang untuk menampilkan saran atau pesan error
+                setTimeout(() => { authMessage = ''; renderApp(); }, 3000); // Clear message
+                // Attach event listeners for new suggested task buttons
+                document.querySelectorAll('.add-suggested-task-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        addSuggestedTask(e.currentTarget.dataset.suggestion);
+                    });
+                });
+            }
+        }
+
+        async function addSuggestedTask(taskText) {
+            if (!db || !userId || !taskText.trim()) return;
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/users/${userId}/tasks`), {
+                    text: taskText,
+                    completed: false,
+                    createdAt: Date.now()
+                });
+            } catch (e) {
+                console.error("Gagal menambahkan tugas saran:", e);
+                authMessage = "Gagal menambahkan tugas saran. Periksa izin Firestore.";
+                renderApp();
+                setTimeout(() => { authMessage = ''; renderApp(); }, 3000);
+            }
+        }
+
+        async function analyzeFinanceData() {
+            isAnalyzingFinance = true;
+            aiFinanceAnalysis = '';
+            renderApp(); // Render ulang untuk menampilkan loading state
+
+            let financeSummary = `Total Pemasukan: Rp ${financeEntries.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0).toLocaleString('id-ID')}.\n`;
+            financeSummary += `Total Pengeluaran: Rp ${financeEntries.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0).toLocaleString('id-ID')}.\n`;
+            // Use the global totalBalance here
+            financeSummary += `Saldo Bersih: Rp ${totalBalance.toLocaleString('id-ID')}.\n`;
+
+            const expenses = financeEntries.filter(e => e.type === 'expense');
+            if (expenses.length > 0) {
+                const expenseCategories = expenses.reduce((acc, e) => {
+                    acc[e.description] = (acc[e.description] || 0) + e.amount;
+                    return acc;
+                }, {});
+                const sortedExpenses = Object.entries(expenseCategories).sort(([, a], [, b]) => b - a);
+                financeSummary += "Pengeluaran Teratas:\n";
+                sortedExpenses.slice(0, 3).forEach(([desc, amount]) => {
+                    financeSummary += `- ${desc}: Rp ${amount.toLocaleString('id-ID')}\n`;
+                });
+            } else {
+                financeSummary += "Belum ada pengeluaran tercatat.\n";
+            }
+
+            const prompt = `Berikut adalah ringkasan data keuangan saya:\n${financeSummary}\n\nBerikan analisis singkat (maksimal 3 kalimat) dan satu tips keuangan yang dapat ditindaklanjuti berdasarkan data ini.`;
+            const apiKey = ""; // API key akan disediakan oleh Canvas saat runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: prompt }] }]
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    aiFinanceAnalysis = result.candidates[0].content.parts[0].text;
+                    showFinanceAnalysisModal = true;
+                } else {
+                    authMessage = "Tidak dapat melakukan analisis keuangan. Coba lagi.";
+                }
+            } catch (error) {
+                console.error("Error memanggil Gemini API untuk analisis keuangan:", error);
+                authMessage = "Terjadi kesalahan saat menghubungi AI untuk analisis keuangan.";
+            } finally {
+                isAnalyzingFinance = false;
+                renderApp(); // Render ulang untuk menampilkan modal atau pesan error
+            }
+        }
+
+
+        // --- Inisialisasi Aplikasi ---
+
+        window.onload = async function() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        // Jika sudah login, render aplikasi utama
+                        if (loggedIn) {
+                            renderApp();
+                            // Setup Firestore listeners
+                            setupFirestoreListeners();
+                        } else {
+                            renderLoginPage(); // Tampilkan halaman login jika belum login
+                        }
+                    } else {
+                        // Coba sign in secara anonim jika belum ada user
+                        try {
+                            await signInAnonymously(auth);
+                        } catch (error) {
+                            console.error("Gagal melakukan autentikasi anonim saat memuat:", error);
+                            // Jika autentikasi anonim gagal, tampilkan pesan error dan tetap di halaman login
+                            document.getElementById('app-container').innerHTML = `<div class="text-red-500 text-center text-xl">Gagal memuat aplikasi. Periksa koneksi atau konfigurasi Firebase.</div>`;
+                            return; // Hentikan eksekusi lebih lanjut jika autentikasi gagal
+                        }
+                        renderLoginPage(); // Selalu tampilkan halaman login jika tidak ada user
+                    }
+                });
+            } catch (error) {
+                console.error("Gagal menginisialisasi Firebase:", error);
+                // Tampilkan pesan error di UI jika inisialisasi Firebase gagal
+                document.getElementById('app-container').innerHTML = `<div class="text-red-500 text-center text-xl">Gagal memuat aplikasi. Periksa konfigurasi Firebase Anda.</div>`;
+            }
+        };
+
+        function setupFirestoreListeners() {
+            // Listener untuk Tugas
+            onSnapshot(collection(db, `artifacts/${appId}/users/${userId}/tasks`), (snapshot) => {
+                tasks = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                tasks.sort((a, b) => b.createdAt - a.createdAt);
+                renderTasksList();
+            }, (error) => {
+                console.error("Gagal mengambil tugas:", error);
+            });
+
+            // Listener untuk Keuangan
+            onSnapshot(collection(db, `artifacts/${appId}/users/${userId}/finances`), (snapshot) => {
+                financeEntries = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                financeEntries.sort((a, b) => b.createdAt - a.createdAt);
+                // Calculate totalBalance here as financeEntries have been updated
+                totalBalance = financeEntries.reduce((acc, entry) => {
+                    return entry.type === 'income' ? acc + entry.amount : acc - entry.amount;
+                }, 0);
+                renderFinanceList();
+            }, (error) => {
+                console.error("Gagal mengambil entri keuangan:", error);
+            });
+
+            // Listener untuk Poin Pengguna
+            onSnapshot(doc(db, `artifacts/${appId}/users/${userId}/profile/data`), (docSnap) => {
+                if (docSnap.exists()) {
+                    points = docSnap.data().points || 0;
+                } else {
+                    // Inisialisasi poin jika dokumen belum ada
+                    setDoc(doc(db, `artifacts/${appId}/users/${userId}/profile/data`), { points: 0 }).catch(e => console.error("Gagal menginisialisasi poin:", e));
+                    points = 0;
+                }
+                if (document.getElementById('points-display')) {
+                    document.getElementById('points-display').textContent = points;
+                }
+            }, (error) => {
+                console.error("Gagal mengambil poin:", error);
+            });
+        }
+    </script>
 </body>
 </html>
